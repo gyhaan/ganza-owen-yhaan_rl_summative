@@ -1,0 +1,16 @@
+learning_rate,n_steps,batch_size,gamma,run,final_risk,train_time_minutes,model_path,gae_lambda,clip_range,ent_coef,n_epochs
+0.0003,2048,64,0.99,0,9.926,2.65,models/pg/ppo_heart_run_0,,,,
+0.001,1024,128,0.99,1,10.326,2.55,models/pg/ppo_heart_run_1,,,,
+0.0005,2048,128,0.995,2,9.926,2.37,models/pg/ppo_heart_run_2,,,,
+0.0002,4096,256,0.99,3,13.926,1.66,models/pg/ppo_heart_run_3,,,,
+0.0003,2048,64,,4,9.926,3.36,models/pg/ppo_heart_run_4,0.95,,,
+0.0003,1024,64,,5,9.727,4.93,models/pg/ppo_heart_run_5,,0.2,,
+0.0005,2048,128,,6,9.926,3.9,models/pg/ppo_heart_run_6,,,0.01,
+0.0003,2048,256,,7,12.727,3.36,models/pg/ppo_heart_run_7,,,,10.0
+0.0001,4096,128,0.999,8,13.926,3.88,models/pg/ppo_heart_run_8,,,,
+0.0008,1024,64,0.99,9,9.727,5.18,models/pg/ppo_heart_run_9,,,,
+0.0003,2048,64,,10,9.926,5.09,models/pg/ppo_heart_run_10,,0.3,,
+0.00025,2048,128,0.99,11,10.126,4.13,models/pg/ppo_heart_run_11,,,,
+0.0003,3072,96,0.995,12,9.982,4.4,models/pg/ppo_heart_run_12,,,,
+0.0004,2048,64,,13,10.126,4.02,models/pg/ppo_heart_run_13,,,0.005,
+0.0003,2048,128,,14,9.926,3.51,models/pg/ppo_heart_run_14,0.98,,,
