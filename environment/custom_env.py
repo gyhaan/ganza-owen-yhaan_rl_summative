@@ -1,153 +1,310 @@
-# environment/custom_env.py  ← FINAL VERSION – PERFECT UI + LAST_ACTION + NO ERRORS
 import gymnasium as gym
 from gymnasium import spaces
-import pygame
 import numpy as np
-import math
+import pygame
+from typing import Dict, Tuple, Optional
+from .rendering import HealthEnvRenderer
 
-pygame.init()  # Keep this at the top
-
-class HeartHealthEnv(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 10}
-
-    def __init__(self, render_mode=None):
-        super().__init__()
+class HeartHealthEnvironment(gym.Env):
+    """
+    Intelligent Lifestyle Intervention Agent for Heart Disease Prevention
+    Simulates a virtual patient with health metrics and recommends interventions
+    """
+    
+    def __init__(self, render_mode: Optional[str] = None):
+        super(HeartHealthEnvironment, self).__init__()
+        
+        # Define action space: 5 types of interventions with discrete levels
+        # [exercise, diet, medication, sleep, stress_reduction]
+        self.action_space = spaces.MultiDiscrete([3, 3, 2, 3, 3])
+        
+        # Define observation space: 7 health metrics + 1 risk score
+        # [systolic_bp, diastolic_bp, cholesterol, weight, age, smoking_status, stress_level, risk_score]
+        self.observation_space = spaces.Box(
+            low=np.array([90, 60, 150, 50, 30, 0, 0, 0]),
+            high=np.array([180, 120, 300, 150, 80, 1, 10, 100]),
+            dtype=np.float32
+        )
+        
+        # Health parameters
+        self.health_state = None
+        self.max_steps = 365  # One year of daily interventions
+        self.current_step = 0
+        self.baseline_risk = 0
+        
+        # Rendering
         self.render_mode = render_mode
-
-        high = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 100.0], dtype=np.float32)
-        self.observation_space = spaces.Box(low=0, high=high, dtype=np.float32)
-        self.action_space = spaces.Discrete(12)
-
-        self.current_step = 0
-        self.max_steps = 520
-        self.last_action = 0  # ← NEW: tracks current action for display
-
-    def _get_obs(self):
-        return np.array([
-            self.age_norm, self.bp_norm, self.chol_norm, self.hdl_norm,
-            self.bmi_norm, self.smoking, self.stress,
-            self.exercise_level, self.diet_quality, self.risk_score
-        ], dtype=np.float32)
-
-    def _calculate_risk(self):
-        age = self.age
-        bp = self.sbp
-        chol = self.total_chol
-        hdl = self.hdl
-        bmi = self.bmi
-        smoke = 1 if self.smoking > 0.3 else 0
-
-        risk = 0.05
-        risk += 0.02 * (age - 50) / 10
-        risk += 0.03 * max(0, bp - 120) / 20
-        risk += 0.01 * max(0, chol - 200) / 50
-        risk -= 0.02 * (hdl - 50) / 20
-        risk += 0.02 * max(0, bmi - 25) / 5
-        if smoke: risk += 0.08
-        if self.stress > 0.7: risk += 0.03
-        risk = np.clip(risk, 0.01, 0.95)
-        return risk * 100
-
-    def reset(self, seed=None, options=None):
+        self.renderer = None
+        if render_mode == "human":
+            self.renderer = HealthEnvRenderer()
+    
+    def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
+        """
+        Reset environment to initial patient state
+        """
         super().reset(seed=seed)
+        np.random.seed(seed)
+        
+        # Initialize patient with realistic health metrics
+        self.health_state = {
+            'systolic_bp': np.random.uniform(120, 160),  # mmHg
+            'diastolic_bp': np.random.uniform(80, 100),  # mmHg  
+            'cholesterol': np.random.uniform(180, 280),  # mg/dL
+            'weight': np.random.uniform(70, 120),        # kg
+            'age': np.random.randint(40, 65),           # years
+            'smoking_status': np.random.choice([0, 1]), # 0: non-smoker, 1: smoker
+            'stress_level': np.random.uniform(3, 8),    # 0-10 scale
+            'risk_score': 0
+        }
+        
+        # Calculate initial Framingham risk score
+        self.health_state['risk_score'] = self._calculate_framingham_risk()  # FIXED: removed extra 'm'
+        self.baseline_risk = self.health_state['risk_score']
         self.current_step = 0
-        self.last_action = 0  # Reset action display
-
-        self.age = self.np_random.uniform(50, 65)
-        self.sbp = self.np_random.uniform(140, 170)
-        self.total_chol = self.np_random.uniform(220, 280)
-        self.hdl = self.np_random.uniform(35, 50)
-        self.bmi = self.np_random.uniform(28, 38)
-        self.smoking = self.np_random.uniform(0.4, 1.0)
-        self.stress = self.np_random.uniform(0.5, 0.9)
-        self.exercise_level = 0.2
-        self.diet_quality = 0.3
-
-        self.risk_score = self._calculate_risk()
-        self.prev_risk = self.risk_score
-
-        self.age_norm = (self.age - 40) / 40
-        self.bp_norm = (self.sbp - 90) / 110
-        self.chol_norm = (self.total_chol - 100) / 200
-        self.hdl_norm = (self.hdl - 20) / 80
-        self.bmi_norm = (self.bmi - 18) / 27
-
-        self.risk_history = [self.risk_score]  # ← for graph
-        return self._get_obs(), {}
-
-    def step(self, action):
-        self.current_step += 1
-        self.last_action = action  # ← THIS LINE IS CRITICAL FOR UI
-
-        # === All your action effects (unchanged) ===
-        if action <= 3:
-            intensity = [0, 0.33, 0.66, 1.0][action]
-            self.exercise_level = 0.7 * self.exercise_level + 0.3 * intensity
-            self.bmi -= 0.08 * intensity
-            self.sbp -= 1.2 * intensity
-            self.hdl += 0.8 * intensity
-        elif action <= 6:
-            quality = [0.2, 0.5, 0.9][action-4]
-            self.diet_quality = 0.8 * self.diet_quality + 0.2 * quality
-            self.total_chol -= 5 * (quality - 0.5)
-            self.bmi -= 0.15 * (quality - 0.5)
-        elif action <= 8:
-            if action == 7:
-                self.sbp -= 8
-                self.total_chol -= 10
-        elif action <= 10:
-            good_sleep = 1 if action == 10 else 0
-            self.stress -= 0.15 * good_sleep
-        elif action == 11:
-            self.stress -= 0.25
-
-        # Natural drift
-        self.sbp += self.np_random.uniform(-2, 3)
-        self.bmi += self.np_random.uniform(-0.05, 0.1)
-        self.stress = np.clip(self.stress + self.np_random.uniform(-0.05, 0.1), 0, 1)
-
-        # Clamping
-        self.sbp = np.clip(self.sbp, 90, 200)
-        self.bmi = np.clip(self.bmi, 18, 45)
-        self.hdl = np.clip(self.hdl, 20, 100)
-        self.total_chol = np.clip(self.total_chol, 100, 300)
-        self.stress = np.clip(self.stress, 0, 1)
-
-        # Update normalized values
-        self.bp_norm = (self.sbp - 90) / 110
-        self.bmi_norm = (self.bmi - 18) / 27
-        self.hdl_norm = (self.hdl - 20) / 80
-        self.chol_norm = (self.total_chol - 100) / 200
-
-        old_risk = self.risk_score
-        self.risk_score = self._calculate_risk()
-        self.risk_history.append(self.risk_score)
-
-        reward = (old_risk - self.risk_score) * 10
-        if self.risk_score > 50: reward -= 50
-        if self.sbp > 180 or self.bmi > 42: reward -= 20
-
-        terminated = self.current_step >= self.max_steps or self.risk_score > 70
-        truncated = False
-
-        return self._get_obs(), reward, terminated, truncated, {}
-
-    def render(self):
-        from .rendering import draw_screen
-
+        
         if self.render_mode == "human":
-            if not hasattr(self, "screen"):
-                self.screen = pygame.display.set_mode((1100, 720))
-                pygame.display.set_caption("Cardiovascular Risk Prevention Agent – Ganza Owen Yhaan")
-            draw_screen(self, self.screen)
-            pygame.display.flip()
-
-        elif self.render_mode == "rgb_array":
-            screen = pygame.Surface((1100, 720))
-            draw_screen(self, screen)
-            return pygame.surfarray.array3d(screen)
-
+            self.renderer.reset()
+            
+        return self._get_observation(), {}
+    
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+        """
+        Execute one time step (one day) in the environment
+        """
+        self.current_step += 1
+        
+        # Apply interventions and update health state
+        self._apply_interventions(action)
+        
+        # Calculate natural health progression
+        self._update_health_dynamics()
+        
+        # Calculate reward based on risk reduction
+        reward = self._calculate_reward()
+        
+        # Check termination conditions
+        terminated = self._is_terminated()
+        truncated = self.current_step >= self.max_steps
+        
+        # Update risk score
+        self.health_state['risk_score'] = self._calculate_framingham_risk()  # FIXED: removed extra 'm'
+        
+        info = {
+            'current_risk': self.health_state['risk_score'],
+            'risk_reduction': self.baseline_risk - self.health_state['risk_score'],
+            'step': self.current_step
+        }
+        
+        if self.render_mode == "human":
+            self.renderer.render(self.health_state, action, reward)
+            
+        return self._get_observation(), reward, terminated, truncated, info
+    
+    def _apply_interventions(self, action: np.ndarray):
+        """
+        Apply lifestyle interventions to health metrics
+        action: [exercise, diet, medication, sleep, stress_reduction]
+        """
+        exercise, diet, medication, sleep, stress_reduction = action
+        
+        # Exercise effects (0: sedentary, 1: moderate, 2: vigorous)
+        if exercise == 1:  # Moderate exercise
+            self.health_state['systolic_bp'] -= 0.1
+            self.health_state['weight'] -= 0.05
+            self.health_state['stress_level'] -= 0.1
+        elif exercise == 2:  # Vigorous exercise
+            self.health_state['systolic_bp'] -= 0.2
+            self.health_state['weight'] -= 0.1
+            self.health_state['stress_level'] -= 0.2
+        
+        # Dietary effects (0: poor, 1: balanced, 2: optimal)
+        if diet == 1:  # Balanced diet
+            self.health_state['cholesterol'] -= 0.2
+            self.health_state['weight'] -= 0.03
+        elif diet == 2:  # Optimal diet
+            self.health_state['cholesterol'] -= 0.5
+            self.health_state['weight'] -= 0.07
+        
+        # Medication adherence (0: no, 1: yes)
+        if medication == 1:
+            self.health_state['systolic_bp'] -= 0.3
+            self.health_state['diastolic_bp'] -= 0.2
+            self.health_state['cholesterol'] -= 0.8
+        
+        # Sleep effects (0: poor, 1: adequate, 2: optimal)
+        if sleep == 1:  # Adequate sleep
+            self.health_state['stress_level'] -= 0.2
+            self.health_state['systolic_bp'] -= 0.05
+        elif sleep == 2:  # Optimal sleep
+            self.health_state['stress_level'] -= 0.4
+            self.health_state['systolic_bp'] -= 0.1
+        
+        # Stress reduction effects (0: none, 1: moderate, 2: high)
+        if stress_reduction == 1:
+            self.health_state['stress_level'] -= 0.3
+            self.health_state['systolic_bp'] -= 0.08
+        elif stress_reduction == 2:
+            self.health_state['stress_level'] -= 0.6
+            self.health_state['systolic_bp'] -= 0.15
+        
+        # Apply bounds to ensure realistic values
+        self._enforce_health_bounds()
+    
+    def _update_health_dynamics(self):
+        """
+        Simulate natural health progression and aging effects
+        """
+        # Natural BP increase with age/stress
+        self.health_state['systolic_bp'] += 0.01
+        self.health_state['diastolic_bp'] += 0.005
+        
+        # Cholesterol natural progression
+        self.health_state['cholesterol'] += 0.05
+        
+        # Weight natural progression (slight gain)
+        self.health_state['weight'] += 0.01
+        
+        # Stress natural fluctuations
+        self.health_state['stress_level'] += np.random.uniform(-0.1, 0.1)
+        
+        # Smoking effects if smoker
+        if self.health_state['smoking_status'] == 1:
+            self.health_state['systolic_bp'] += 0.05
+            self.health_state['cholesterol'] += 0.1
+        
+        # Age progression (slight effect over time)
+        self.health_state['age'] += 1/365  # Daily aging
+        
+        self._enforce_health_bounds()
+    
+    def _calculate_framingham_risk(self) -> float:  # FIXED: removed extra 'm'
+        """
+        Calculate simplified Framingham Risk Score for 10-year CVD risk
+        Simplified version for demonstration purposes
+        """
+        risk = 0
+        
+        # Age factor
+        age = self.health_state['age']
+        if age >= 60:
+            risk += 8
+        elif age >= 50:
+            risk += 5
+        elif age >= 40:
+            risk += 3
+        
+        # Blood pressure factor
+        systolic_bp = self.health_state['systolic_bp']
+        if systolic_bp >= 160:
+            risk += 4
+        elif systolic_bp >= 140:
+            risk += 3
+        elif systolic_bp >= 130:
+            risk += 2
+        elif systolic_bp >= 120:
+            risk += 1
+        
+        # Cholesterol factor
+        cholesterol = self.health_state['cholesterol']
+        if cholesterol >= 240:
+            risk += 4
+        elif cholesterol >= 200:
+            risk += 3
+        elif cholesterol >= 180:
+            risk += 2
+        
+        # Smoking factor
+        if self.health_state['smoking_status'] == 1:
+            risk += 4
+        
+        # Weight/BMI factor (simplified)
+        bmi = self.health_state['weight'] / ((1.7) ** 2)  # Approximate BMI
+        if bmi >= 30:
+            risk += 3
+        elif bmi >= 25:
+            risk += 2
+        
+        # Stress factor
+        if self.health_state['stress_level'] >= 7:
+            risk += 2
+        elif self.health_state['stress_level'] >= 5:
+            risk += 1
+        
+        return min(risk * 1.5, 100)  # Scale to 0-100 range
+    
+    def _calculate_reward(self) -> float:
+        """
+        Calculate reward based on risk reduction and healthy behaviors
+        """
+        current_risk = self.health_state['risk_score']
+        risk_reduction = self.baseline_risk - current_risk
+        
+        # Primary reward: risk reduction
+        reward = risk_reduction * 10
+        
+        # Bonus for maintaining healthy metrics
+        if self.health_state['systolic_bp'] < 130:
+            reward += 1
+        if self.health_state['cholesterol'] < 200:
+            reward += 1
+        if self.health_state['weight'] < 90:  # Reasonable weight threshold
+            reward += 1
+        if self.health_state['stress_level'] < 5:
+            reward += 1
+        
+        # Penalty for extremely unhealthy states
+        if self.health_state['systolic_bp'] > 160:
+            reward -= 2
+        if self.health_state['cholesterol'] > 240:
+            reward -= 2
+        if self.health_state['stress_level'] > 8:
+            reward -= 1
+        
+        return reward
+    
+    def _is_terminated(self) -> bool:
+        """
+        Check if episode should terminate (critical health condition)
+        """
+        # Terminate if critical health conditions
+        if (self.health_state['systolic_bp'] > 180 or 
+            self.health_state['diastolic_bp'] > 120 or
+            self.health_state['risk_score'] > 80):
+            return True
+        
+        return False
+    
+    def _enforce_health_bounds(self):
+        """
+        Ensure health metrics stay within realistic bounds
+        """
+        self.health_state['systolic_bp'] = np.clip(self.health_state['systolic_bp'], 90, 180)
+        self.health_state['diastolic_bp'] = np.clip(self.health_state['diastolic_bp'], 60, 120)
+        self.health_state['cholesterol'] = np.clip(self.health_state['cholesterol'], 150, 300)
+        self.health_state['weight'] = np.clip(self.health_state['weight'], 50, 150)
+        self.health_state['stress_level'] = np.clip(self.health_state['stress_level'], 0, 10)
+    
+    def _get_observation(self) -> np.ndarray:
+        """
+        Convert health state to observation array
+        """
+        return np.array([
+            self.health_state['systolic_bp'],
+            self.health_state['diastolic_bp'], 
+            self.health_state['cholesterol'],
+            self.health_state['weight'],
+            self.health_state['age'],
+            self.health_state['smoking_status'],
+            self.health_state['stress_level'],
+            self.health_state['risk_score']
+        ], dtype=np.float32)
+    
+    def render(self):
+        """Render environment"""
+        if self.render_mode == "human" and self.renderer:
+            self.renderer.render(self.health_state, None, 0)
+    
     def close(self):
-        if hasattr(self, "screen"):
-            pygame.display.quit()
-            pygame.quit()
+        """Clean up resources"""
+        if self.renderer:
+            self.renderer.close()
