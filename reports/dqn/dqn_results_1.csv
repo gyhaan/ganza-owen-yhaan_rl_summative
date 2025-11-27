@@ -1,0 +1,13 @@
+learning_rate,batch_size,gamma,buffer_size,run,final_risk,train_time_minutes,model_path,tau,train_freq,exploration_fraction,target_update_interval,gradient_steps
+0.001,64,0.99,100000.0,0,14.428,2.04,models/dqn/dqn_heart_run_0,,,,,
+0.0005,128,0.99,100000.0,1,12.086,2.48,models/dqn/dqn_heart_run_1,,,,,
+0.001,64,0.995,500000.0,2,12.822,2.32,models/dqn/dqn_heart_run_2,,,,,
+0.0005,128,0.995,500000.0,3,12.086,2.29,models/dqn/dqn_heart_run_3,,,,,
+0.0001,256,0.99,100000.0,4,9.086,3.2,models/dqn/dqn_heart_run_4,,,,,
+0.001,128,0.99,,5,9.086,2.42,models/dqn/dqn_heart_run_5,0.005,,,,
+0.0005,64,0.999,,6,9.086,1.44,models/dqn/dqn_heart_run_6,,8.0,,,
+0.001,256,0.99,,7,12.086,2.43,models/dqn/dqn_heart_run_7,,,0.3,,
+0.0003,128,0.995,200000.0,8,9.086,2.28,models/dqn/dqn_heart_run_8,,,,,
+0.0008,64,0.99,,9,9.268,2.1,models/dqn/dqn_heart_run_9,,,,500.0,
+0.001,128,0.99,,10,12.086,6.41,models/dqn/dqn_heart_run_10,,,,,4.0
+0.0005,256,0.995,,11,12.859,2.42,models/dqn/dqn_heart_run_11,,,,,

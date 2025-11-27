@@ -13,19 +13,68 @@ os.makedirs("reports/dqn", exist_ok=True)
 os.makedirs("models/dqn", exist_ok=True)
 
 hyperparams = [
-    {"learning_rate": 1e-3, "batch_size": 64,   "gamma": 0.99,  "buffer_size": 100_000},
-    {"learning_rate": 5e-4, "batch_size": 128,  "gamma": 0.99,  "buffer_size": 100_000},
-    {"learning_rate": 1e-3, "batch_size": 64,   "gamma": 0.995, "buffer_size": 500_000},
-    {"learning_rate": 5e-4, "batch_size": 128,  "gamma": 0.995, "buffer_size": 500_000},
-    {"learning_rate": 1e-4, "batch_size": 256,  "gamma": 0.99,  "buffer_size": 100_000},
-    {"learning_rate": 1e-3, "batch_size": 128,  "gamma": 0.99,  "tau": 0.005},
-    {"learning_rate": 5e-4, "batch_size": 64,   "gamma": 0.999, "train_freq": 8},
-    {"learning_rate": 1e-3, "batch_size": 256,  "gamma": 0.99,  "exploration_fraction": 0.3},
-    {"learning_rate": 3e-4, "batch_size": 128,  "gamma": 0.995, "buffer_size": 200_000},
-    {"learning_rate": 8e-4, "batch_size": 64,   "gamma": 0.99,  "target_update_interval": 500},
-    {"learning_rate": 1e-3, "batch_size": 128,  "gamma": 0.99,  "gradient_steps": 4},
-    {"learning_rate": 5e-4, "batch_size": 256,  "gamma": 0.995},
+    {
+        "learning_rate": 1e-4, "batch_size": 128, "gamma": 0.995,
+        "buffer_size": 300_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.25, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.05
+    },
+    {
+        "learning_rate": 2e-4, "batch_size": 128, "gamma": 0.995,
+        "buffer_size": 300_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.20, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.05
+    },
+    {
+        "learning_rate": 7e-5, "batch_size": 256, "gamma": 0.997,
+        "buffer_size": 400_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.30, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.03
+    },
+    {
+        "learning_rate": 3e-4, "batch_size": 128, "gamma": 0.99,
+        "buffer_size": 300_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.35, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.05
+    },
+    {
+        "learning_rate": 5e-4, "batch_size": 128, "gamma": 0.992,
+        "buffer_size": 250_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.20, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.02
+    },
+    {
+        "learning_rate": 1e-4, "batch_size": 64, "gamma": 0.998,
+        "buffer_size": 350_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.25, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.05
+    },
+    {
+        "learning_rate": 2e-4, "batch_size": 256, "gamma": 0.995,
+        "buffer_size": 300_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.20, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.02
+    },
+    {
+        "learning_rate": 1e-4, "batch_size": 512, "gamma": 0.995,
+        "buffer_size": 500_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.25, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.03
+    },
+    {
+        "learning_rate": 7e-4, "batch_size": 128, "gamma": 0.99,
+        "buffer_size": 250_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.15, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.02
+    },
+    {
+        "learning_rate": 4e-4, "batch_size": 64, "gamma": 0.99,
+        "buffer_size": 250_000, "train_freq": 4, "gradient_steps": 1,
+        "exploration_fraction": 0.10, "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.01
+    },
 ]
+
 
 results = []
 for i, hp in enumerate(hyperparams):
